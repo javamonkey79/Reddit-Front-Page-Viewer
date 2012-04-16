@@ -1,0 +1,79 @@
+<html>
+	<head>
+		<link rel="shortcut icon" 
+      type="image/x-icon" 
+      href="http://www.redditstatic.com/favicon.ico">
+		<script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+		<script type="text/javascript">
+			function load(time, subreddit) {
+				$("#content").html("");
+				$("<h1>reddit top for: " + time + " and " + subreddit + "</h1>").appendTo("#content");
+				
+				
+				$("<a href='javascript:void(0)' onclick=load('day','pics')>Show Top Pics For Today</a>").appendTo("#content");
+				$("<br/>").appendTo("#content");	
+				$("<a href='javascript:void(0)' onclick=load('day','all')>Show Top ALL For Today</a>").appendTo("#content");
+				$("<br/>").appendTo("#content");
+				
+				//TODO - clean this up, use better widgets to change time span and subreddit
+				/**
+				$("<a href='javascript:void(0)' onclick=load('week','pics')>Show Top Pics For This Week</a>").appendTo("#content");	
+				$("<br/>").appendTo("#content");	
+				$("<a href='javascript:void(0)' onclick=load('month','pics')>Show Top Pics For This Month</a>").appendTo("#content");					
+				*/
+				
+				$.getJSON( "http://www.reddit.com/r/" + subreddit + "/top/.json?sort=top&t=" + time + "&jsonp=?", function(json) {
+				  $.each(json.data.children, function(i,item){
+						var iData = item.data;
+						var commentLink = "http://www.reddit.com" + iData.permalink;
+						var url = iData.url;
+						
+						var imgurAlbumPattern = new RegExp("http://imgur\\.com/a/\\w+");
+						var imagePattern = new RegExp("\\.\\w{3}");
+						
+						var extension = url.substr( url.length - 4 );
+						var endsWithFileExtension = imagePattern.test( extension );
+						var imgurAlbum =  imgurAlbumPattern.test( url );
+						
+						/*
+						console.debug( "url: {" + url + "} - albumImgur: {" + albumImgur + 
+							"} - extension: {" + extension + "} - endsWithFileExtension: {" + endsWithFileExtension + "}" );
+						*/
+
+						$("<h1>" + iData.title + "</h1>").appendTo("#content");
+						$("<a href='"+commentLink+"' target='_blank'>Comments</a>").appendTo("#content");	
+						appendBreak();
+						
+						var imageUrl = endsWithFileExtension ? url : url + ".jpg";
+						if( endsWithFileExtension || ( url.indexOf( "imgur" ) != -1 && !imgurAlbum ) ) {
+							// handle images
+							$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+imageUrl+"' style='width: 75%; height: 75%;' /></a>").appendTo("#content");
+						} else {
+							// drop a link to it just in case we can't wrap it in an iframe
+							$("<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>").appendTo("#content");
+							
+							if(url.indexOf("youtube") != -1 || url.indexOf("youtu.be") != -1){
+								// handle youtube videos
+								var youtubeRegex = /(?:http:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?)?(?:.+)v=(\w+)(?:&.+=.+)*/g;
+								$("<iframe class='youtube-player' src='"+url.replace(youtubeRegex, "http://www.youtube.com/embed/$1")+"' style='width: 75%; height: 75%;'/>").appendTo("#content");								
+							}else if(imgurAlbum) {
+								// handle imgur albums
+								$("<iframe src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#content");								
+							}else {
+								// TODO - present a widget to open the page in an iframe...
+							}
+						}
+						appendBreak();
+			    });
+				});
+			}
+			
+			function appendBreak(){
+				$("<br/>").appendTo("#content");
+			}
+		</script>
+	</head>
+	<body onload="load('day', 'all')">
+		<div id="content" />	
+	</body>
+</html>
