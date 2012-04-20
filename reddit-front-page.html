@@ -4,6 +4,8 @@
       type="image/x-icon" 
       href="http://www.redditstatic.com/favicon.ico">
 		<script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
+		<!-- using the jquery url parser: https://github.com/allmarkedup/jQuery-URL-Parser -->
+		<script type="text/javascript" src="https://raw.github.com/allmarkedup/jQuery-URL-Parser/master/jquery.url.js"></script>
 		<script type="text/javascript">
 			function load(time, subreddit) {
 				$("#content").html("");
@@ -29,7 +31,7 @@
 						var url = iData.url;
 						
 						var imgurAlbumPattern = new RegExp("http://imgur\\.com/a/\\w+");
-						var imagePattern = new RegExp("\\.\\w{3}");
+						var imagePattern = new RegExp("\\.(gif|jpg|png)");
 						
 						var extension = url.substr( url.length - 4 );
 						var endsWithFileExtension = imagePattern.test( extension );
@@ -53,19 +55,39 @@
 							$("<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>").appendTo("#content");
 							
 							if(url.indexOf("youtube") != -1 || url.indexOf("youtu.be") != -1){
-								// handle youtube videos
-								var youtubeRegex = /(?:http:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/(?:watch\?)?(?:.+)v=(\w+)(?:&.+=.+)*/g;
-								$("<iframe class='youtube-player' src='"+url.replace(youtubeRegex, "http://www.youtube.com/embed/$1")+"' style='width: 75%; height: 75%;'/>").appendTo("#content");								
+								var parsedUrl = $.url( url );
+								var videoId = parsedUrl.param( 'v' );
+								if(videoId == undefined){
+									var youtubeRegex = /(?:http:\/\/)?(?:www\.)?(?:youtu\.be)\/(.+)/g;
+									url = url.replace(youtubeRegex, "http://www.youtube.com/embed/$1")
+								}else{
+									url = "http://www.youtube.com/embed/" + videoId;
+								}
+								
+								//console.debug("youtube url: " + url);
+								
+								$("<iframe class='youtube-player' src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#content");								
 							}else if(imgurAlbum) {
 								// handle imgur albums
 								$("<iframe src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#content");								
+							}else if(url.indexOf("qkme.me") != -1) {
+								// handle quick meme
+								
+								url = "http://i." + $.url(url).attr("host") + $.url(url).attr("path") + ".jpg";
+								
+								$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+url+"' style='width: 75%; height: 75%;' /></a>").appendTo("#content");
 							}else {
-								// TODO - present a widget to open the page in an iframe...
+								$("<a href='javascript:void(0)' id='showme"+i+"' onclick=showIFrame('showme"+i+"','"+url+"')>Show iFrame</a><br/>").appendTo("#content");
 							}
 						}
 						appendBreak();
 			    });
 				});
+			}
+			
+			function showIFrame(idAppendTo,url){
+				$("<br/>").appendTo("#"+idAppendTo);
+				$("<iframe src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#"+idAppendTo);
 			}
 			
 			function appendBreak(){
