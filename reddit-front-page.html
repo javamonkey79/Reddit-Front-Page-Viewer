@@ -7,22 +7,14 @@
 		<!-- using the jquery url parser: https://github.com/allmarkedup/jQuery-URL-Parser -->
 		<script type="text/javascript" src="https://raw.github.com/allmarkedup/jQuery-URL-Parser/master/jquery.url.js"></script>
 		<script type="text/javascript">
+			var seenUrls = [];
+			
+			function loadAllAndPics(){
+				load('day','all');
+				load('day','pics');
+			}
 			function load(time, subreddit) {
 				$("#content").html("");
-				$("<h1>reddit top for: " + time + " and " + subreddit + "</h1>").appendTo("#content");
-				
-				
-				$("<a href='javascript:void(0)' onclick=load('day','pics')>Show Top Pics For Today</a>").appendTo("#content");
-				$("<br/>").appendTo("#content");	
-				$("<a href='javascript:void(0)' onclick=load('day','all')>Show Top ALL For Today</a>").appendTo("#content");
-				$("<br/>").appendTo("#content");
-				
-				//TODO - clean this up, use better widgets to change time span and subreddit
-				/**
-				$("<a href='javascript:void(0)' onclick=load('week','pics')>Show Top Pics For This Week</a>").appendTo("#content");	
-				$("<br/>").appendTo("#content");	
-				$("<a href='javascript:void(0)' onclick=load('month','pics')>Show Top Pics For This Month</a>").appendTo("#content");					
-				*/
 				
 				$.getJSON( "http://www.reddit.com/r/" + subreddit + "/top/.json?sort=top&t=" + time + "&jsonp=?", function(json) {
 				  $.each(json.data.children, function(i,item){
@@ -30,11 +22,16 @@
 						var commentLink = "http://www.reddit.com" + iData.permalink;
 						var url = iData.url;
 						
-						var imgurAlbumPattern = new RegExp("http://imgur\\.com/a/\\w+");
-						var imagePattern = new RegExp("\\.(gif|jpg|png)");
+						if( seenUrls.indexOf( url ) != -1 ){
+							return;
+						}
 						
-						var extension = url.substr( url.length - 4 );
-						var endsWithFileExtension = imagePattern.test( extension );
+						seenUrls.push( url );
+						
+						var imgurAlbumPattern = new RegExp("http://imgur\\.com/a/\\w+");
+						var imagePattern = new RegExp("\\.(gif|jpg|png|jpeg)");
+						
+						var endsWithFileExtension = imagePattern.test( url );
 						var imgurAlbum =  imgurAlbumPattern.test( url );
 						
 						/*
@@ -95,7 +92,7 @@
 			}
 		</script>
 	</head>
-	<body onload="load('day', 'all')">
+	<body onload="loadAllAndPics()">
 		<div id="content" />	
 	</body>
 </html>
