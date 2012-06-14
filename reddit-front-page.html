@@ -26,6 +26,15 @@
 							return;
 						}
 						
+						if( commentLink.indexOf( "gonewild" ) != -1 ){
+							appendBreak();
+							
+							$("<a href='"+commentLink+"' target='_blank'><span style='background-color:red'>SKIPPED: GONE, WILD</span></a>").appendTo("#content");	
+							appendBreak();
+							
+							return;
+						}
+						
 						seenUrls.push( url );
 						
 						var imgurAlbumPattern = new RegExp("http://imgur\\.com/a/\\w+");
