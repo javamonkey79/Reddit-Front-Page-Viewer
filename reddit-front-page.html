@@ -55,7 +55,7 @@
 						var imageUrl = endsWithFileExtension ? url : url + ".jpg";
 						if( endsWithFileExtension || ( url.indexOf( "imgur" ) != -1 && !imgurAlbum ) ) {
 							// handle images
-							$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+imageUrl+"' style='width: 75%; height: 75%;' /></a>").appendTo("#content");
+							$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
 						} else {
 							// drop a link to it just in case we can't wrap it in an iframe
 							$("<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>").appendTo("#content");
