@@ -1,43 +1,51 @@
 <html>
 	<head>
+		<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+		<meta content="utf-8" http-equiv="encoding">		
 		<link rel="shortcut icon" 
       type="image/x-icon" 
       href="http://www.redditstatic.com/favicon.ico">
 		<script type="text/javascript" src="http://code.jquery.com/jquery-1.7.1.min.js"></script>
 		<!-- using the jquery url parser: https://github.com/allmarkedup/jQuery-URL-Parser -->
-		<script type="text/javascript" src="https://raw.github.com/allmarkedup/jQuery-URL-Parser/master/jquery.url.js"></script>
+		<script type="text/javascript" src="https://raw.github.com/allmarkedup/jQuery-URL-Parser/master/purl.js"></script>
 		<script type="text/javascript">
 			var seenUrls = [];
 			
 			function loadAllAndPics(){
-				load('day','all');
-				load('day','pics');
-			}
-			function load(time, subreddit) {
 				$("#content").html("");
 				
-				$.getJSON( "http://www.reddit.com/r/" + subreddit + "/top/.json?sort=top&t=" + time + "&jsonp=?", function(json) {
+				loadByTimeAndSubreddit("day","all");
+				loadByTimeAndSubreddit("day","pics");
+				loadByUrl('http://www.reddit.com/.json?jsonp=?');
+				loadByUrl('http://www.reddit.com/r/pics/.json?jsonp=?');
+			}
+			
+			function loadByTimeAndSubreddit(time, subreddit) {
+				loadByUrl("http://www.reddit.com/r/" + subreddit + "/top/.json?sort=top&t=" + time + "&jsonp=?");
+			}
+			
+			function loadByUrl(url) {
+				
+				console.debug("getting json for url: " + url);
+				
+				$.getJSON( url, function(json) {
 				  $.each(json.data.children, function(i,item){
 						var iData = item.data;
 						var commentLink = "http://www.reddit.com" + iData.permalink;
 						var url = iData.url;
 						
 						if( seenUrls.indexOf( url ) != -1 ){
+							//console.debug("skipping this url, it's a duplicate: "+url);
 							return;
 						}
 						
-						if( commentLink.indexOf( "gonewild" ) != -1 ){
-							appendBreak();
-							
-							$("<a href='"+commentLink+"' target='_blank'><span style='background-color:red'>SKIPPED: GONE, WILD</span></a>").appendTo("#content");	
-							appendBreak();
-							
+						if( commentLink.indexOf( "atheism" ) != -1 ){
 							return;
-						}
+						}						
 						
 						seenUrls.push( url );
 						
-						var imgurAlbumPattern = new RegExp("http://imgur\\.com/a/\\w+");
+						var imgurAlbumPattern = new RegExp("http://imgur\\.com/(a|gallery)/\\w+");
 						var imagePattern = new RegExp("\\.(gif|jpg|png|jpeg)");
 						
 						var endsWithFileExtension = imagePattern.test( url );
@@ -48,19 +56,28 @@
 							"} - extension: {" + extension + "} - endsWithFileExtension: {" + endsWithFileExtension + "}" );
 						*/
 
-						$("<h1>" + iData.title + "</h1>").appendTo("#content");
+						var title = iData.title;
+
+						$("<h1>" + title + "</h1>").appendTo("#content");
 						$("<a href='"+commentLink+"' target='_blank'>Comments</a>").appendTo("#content");	
 						appendBreak();
 						
 						var imageUrl = endsWithFileExtension ? url : url + ".jpg";
 						if( endsWithFileExtension || ( url.indexOf( "imgur" ) != -1 && !imgurAlbum ) ) {
 							// handle images
-							$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
+							
+							if( commentLink.indexOf( "nsfw" ) != -1 || title.indexOf( "NSFW" ) != -1 || commentLink.indexOf( "gonewild" ) != -1 ) {
+								$("<a href='javascript:void(0)' onclick=showHiddenImage(hiddenImg"+i+")>Show It!</a><br/>").appendTo("#content");	
+								$("<a href='"+url+"' target='_blank' style='display:none' id=hiddenImg"+i+"><img id=redditImg"+i+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
+							} else {
+								$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");								
+							}
+							
 						} else {
 							// drop a link to it just in case we can't wrap it in an iframe
 							$("<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>").appendTo("#content");
 							
-							if(url.indexOf("youtube") != -1 || url.indexOf("youtu.be") != -1){
+							if((url.indexOf("youtube") != -1 || url.indexOf("youtu.be") != -1) && url.indexOf("charts") == -1){
 								var parsedUrl = $.url( url );
 								var videoId = parsedUrl.param( 'v' );
 								if(videoId == undefined){
@@ -75,11 +92,38 @@
 								$("<iframe class='youtube-player' src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#content");								
 							}else if(imgurAlbum) {
 								// handle imgur albums
-								$("<iframe src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#content");								
-							}else if(url.indexOf("qkme.me") != -1) {
+								
+								if( commentLink.indexOf( "gonewild" ) != -1 ) {
+									$("<a href='javascript:void(0)' onclick='showHiddenImage(id=redditFrame"+i+")'>Show It!</a><br/>").appendTo("#content");	
+									$("<iframe src='"+url+"' id=redditFrame"+i+" style='width: 75%; height: 75%; display:none; '/>").appendTo("#content");								
+								} else {
+									$("<iframe src='"+url+"' id=redditFrame"+i+" style='width: 75%; height: 75%;'/>").appendTo("#content");								
+								}
+	
+							}else if(url.indexOf("qkme.me") != -1 || url.indexOf("quickmeme") != -1) {
+								
 								// handle quick meme
 								
-								url = "http://i." + $.url(url).attr("host") + $.url(url).attr("path") + ".jpg";
+								//example #1: http://www.quickmeme.com/meme/3rw7au/ : http://i.qkme.me/3rw7au.jpg
+								//example #2: http://qkme.me/3qyjn2 : http://i.qkme.me/3qyjn2.jpg
+								//example #3: http://qkme.me/3rwvvj?id=228282463 : http://i.qkme.me/3rwvvj.jpg
+								
+								//handle trailing slashes
+								if(url.charAt(url.length -1) == '/'){
+									url = url.substring(0, url.length -1);
+								}
+								
+								//handle url params
+								var questionMarkLocation = url.indexOf("?")
+								if(questionMarkLocation != -1){
+									url = url.substring(0,questionMarkLocation);
+								}
+								
+								var split = url.split("/");
+								var imageLoc = split[split.length - 1];
+								
+								url = "http://i.qkme.me/" + imageLoc + ".jpg";
+								console.debug("quick meme url: " + url);
 								
 								$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+url+"' style='width: 75%; height: 75%;' /></a>").appendTo("#content");
 							}else {
@@ -95,6 +139,11 @@
 				$("<br/>").appendTo("#"+idAppendTo);
 				$("<iframe src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#"+idAppendTo);
 			}
+			
+			function showHiddenImage(idToShow){
+				//console.debug("showing: " + idToShow);
+				$(idToShow).css("display", "inline");
+			}			
 			
 			function appendBreak(){
 				$("<br/>").appendTo("#content");
