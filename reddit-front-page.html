@@ -113,7 +113,7 @@
   				
   				$.each(innerJson[1].data.children, function(j,innerItem){
   					if(innerItem.data.body != undefined){
-  						newContent += "<h3 style=\"width: 50%; padding-left:50px;\">"+innerItem.data.body+"</h3>";
+  						newContent += "<div style=\"width: 50%; padding-left:50px;\">"+$("<div/>").html(innerItem.data.body_html).text()+"</div><hr width=50% align=left />";
   					}
   				});
   				
