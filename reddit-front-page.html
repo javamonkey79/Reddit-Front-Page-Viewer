@@ -9,6 +9,7 @@
 		<!-- using the jquery url parser: https://github.com/allmarkedup/jQuery-URL-Parser -->
 		<script type="text/javascript" src="https://raw.github.com/allmarkedup/jQuery-URL-Parser/master/purl.js"></script>
 		<script type="text/javascript">
+			var itemNumber = 0;
 			var seenUrls = [];
 
 			function loadAllAndPics(){
@@ -27,10 +28,10 @@
 
 			function loadByUrl(url) {
 
-				console.debug("getting json for url: " + url);
-
 				$.getJSON( url, function(json) {
 				  $.each(json.data.children, function(i,item){
+				  	
+				  	console.debug(itemNumber);
 
 						var iData = item.data;
 						var commentLink = "http://www.reddit.com" + iData.permalink;
@@ -61,7 +62,7 @@
 
 						var imageUrl = endsWithFileExtension ? url : url + ".jpg";
 						if( endsWithFileExtension || ( url.indexOf( "imgur" ) != -1 && !imgurAlbum ) ) {
-							showImage(commentLink, title, i, url, imageUrl);
+							showImage(commentLink, title, url, imageUrl);
 						} else {
 							// drop a link to it just in case we can't wrap it in an iframe
 							$("<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>").appendTo("#content");
@@ -69,39 +70,38 @@
 							if((url.indexOf("youtube") != -1 || url.indexOf("youtu.be") != -1) && url.indexOf("charts") == -1){
 								showYouTubeContent(url);
 							}else if(imgurAlbum) {
-								showImgurAlbum(commentLink, title, i, url);
+								showImgurAlbum(commentLink, title, url);
 							}else if(url.indexOf("qkme.me") != -1 || url.indexOf("quickmeme") != -1) {
-								showQuickMemeContent(url,i);
-
-								$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+url+"' style='width: 75%; height: 75%;' /></a>").appendTo("#content");
+								showQuickMemeContent(url);
 							}else if(url.indexOf("reddit.com") != -1) {
-								$("<a href='javascript:void(0)' id='top10_showme"+i+"' onclick=showTopComments('top10_showme"+i+"','"+url+"',10)>Show Top 10 Comments</a><br/>").appendTo("#content");
-								$("<a href='javascript:void(0)' id='top25_showme"+i+"' onclick=showTopComments('top25_showme"+i+"','"+url+"',25)>Show Top 25 Comments</a><br/>").appendTo("#content");
-								$("<a href='javascript:void(0)' id='top100_showme"+i+"' onclick=showTopComments('top100_showme"+i+"','"+url+"',100)>Show Top 100 Comments</a><br/>").appendTo("#content");
+								$("<a href='javascript:void(0)' id='top10_showme"+itemNumber+"' onclick=showTopComments('top10_showme"+itemNumber+"','"+url+"',10)>Show Top 10 Comments</a><br/>").appendTo("#content");
+								$("<a href='javascript:void(0)' id='top25_showme"+itemNumber+"' onclick=showTopComments('top25_showme"+itemNumber+"','"+url+"',25)>Show Top 25 Comments</a><br/>").appendTo("#content");
+								$("<a href='javascript:void(0)' id='top100_showme"+itemNumber+"' onclick=showTopComments('top100_showme"+itemNumber+"','"+url+"',100)>Show Top 100 Comments</a><br/>").appendTo("#content");
 							}else {
-								$("<a href='javascript:void(0)' id='showme"+i+"' onclick=showIFrame('showme"+i+"','"+url+"')>Show iFrame</a><br/>").appendTo("#content");
+								$("<a href='javascript:void(0)' id='showme"+itemNumber+"' onclick=showIFrame('showme"+itemNumber+"','"+url+"')>Show iFrame</a><br/>").appendTo("#content");
 							}
 						}
 						appendBreak();
+						itemNumber++;
 			    });
 				});
 			}
 
-			function showImage(commentLink, title, i, url, imageUrl){
+			function showImage(commentLink, title, url, imageUrl){
 				if( commentLink.indexOf( "nsfw" ) != -1 || title.indexOf( "NSFW" ) != -1 || commentLink.indexOf( "gonewild" ) != -1 ) {
-					$("<a href='javascript:void(0)' onclick=showHiddenImage(hiddenImg"+i+")>Show It!</a><br/>").appendTo("#content");
-					$("<a href='"+url+"' target='_blank' style='display:none' id=hiddenImg"+i+"><img id=redditImg"+i+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
+					$("<a href='javascript:void(0)' onclick=showHiddenImage(hiddenImg"+itemNumber+")>Show It!</a><br/>").appendTo("#content");
+					$("<a href='"+url+"' target='_blank' style='display:none' id=hiddenImg"+itemNumber+"><img id=redditImg"+itemNumber+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
 				} else {
-					$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
+					$("<a href='"+url+"' target='_blank'><img id=redditImg"+itemNumber+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
 				}
 			}
 
-			function showImgurAlbum(commentLink, title, i, url){
+			function showImgurAlbum(commentLink, title, url){
 				if( commentLink.indexOf( "gonewild" ) != -1 ) {
-					$("<a href='javascript:void(0)' onclick='showHiddenImage(id=redditFrame"+i+")'>Show It!</a><br/>").appendTo("#content");
-					$("<iframe src='"+url+"' id=redditFrame"+i+" style='width: 75%; height: 75%; display:none; '/>").appendTo("#content");
+					$("<a href='javascript:void(0)' onclick='showHiddenImage(id=redditFrame"+itemNumber+")'>Show It!</a><br/>").appendTo("#content");
+					$("<iframe src='"+url+"' id=redditFrame"+itemNumber+" style='width: 75%; height: 75%; display:none; '/>").appendTo("#content");
 				} else {
-					$("<iframe src='"+url+"' id=redditFrame"+i+" style='width: 75%; height: 75%;'/>").appendTo("#content");
+					$("<iframe src='"+url+"' id=redditFrame"+itemNumber+" style='width: 75%; height: 75%;'/>").appendTo("#content");
 				}
 			}
 
@@ -134,7 +134,7 @@
 				$("<iframe class='youtube-player' src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#content");
 			}
 
-			function showQuickMemeContent(url,i){
+			function showQuickMemeContent(url){
 				//example #1: http://www.quickmeme.com/meme/3rw7au/ : http://i.qkme.me/3rw7au.jpg
 				//example #2: http://qkme.me/3qyjn2 : http://i.qkme.me/3qyjn2.jpg
 				//example #3: http://qkme.me/3rwvvj?id=228282463 : http://i.qkme.me/3rwvvj.jpg
@@ -155,7 +155,7 @@
 
 				url = "http://i.qkme.me/" + imageLoc + ".jpg";
 				
-				$("<a href='"+url+"' target='_blank'><img id=redditImg"+i+" src='"+url+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
+				$("<a href='"+url+"' target='_blank'><img id=redditImg"+itemNumber+" src='"+url+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
 			}
 
 			function showIFrame(idAppendTo,url){
