@@ -9,100 +9,159 @@
 		<!-- using the jquery url parser: https://github.com/allmarkedup/jQuery-URL-Parser -->
 		<script type="text/javascript" src="https://raw.github.com/allmarkedup/jQuery-URL-Parser/master/purl.js"></script>
 		<script type="text/javascript">
+		
+			var imgurAlbumPattern = new RegExp("http://imgur\\.com/(a|gallery)/\\w+");
+			var imagePattern = new RegExp("\\.(gif|jpg|png|jpeg)");		
+
+			var html = "";  		
 			var itemNumber = 0;
+		
 			var seenUrls = [];
+			var askRedditUrls = [];
+			var nonImageContent = [];
+		
+			var iData;
+			var commentLink;
+			var url;
+			var title; 
 
 			function loadAllAndPics(){
 				$("#content").html("");
 
-				loadByTimeAndSubreddit("day","all");
-				loadByTimeAndSubreddit("day","pics");
-				loadByTimeAndSubreddit("day","askreddit");
-				loadByUrl('http://www.reddit.com/.json?jsonp=?');
-				loadByUrl('http://www.reddit.com/r/pics/.json?jsonp=?');
-			}
-
-			function loadByTimeAndSubreddit(time, subreddit) {
-				loadByUrl("http://www.reddit.com/r/" + subreddit + "/top/.json?sort=top&t=" + time + "&jsonp=?");
-			}
-
-			function loadByUrl(url) {
-
-				$.getJSON( url, function(json) {
-				  $.each(json.data.children, function(i,item){
-				  	
-				  	console.debug(itemNumber);
-
-						var iData = item.data;
-						var commentLink = "http://www.reddit.com" + iData.permalink;
-						var url = iData.url;
-
-						if( seenUrls.indexOf( url ) != -1 || commentLink.indexOf( "atheism" ) != -1 ){
-							return;
-						}
-
-						seenUrls.push( url );
-
-						var imgurAlbumPattern = new RegExp("http://imgur\\.com/(a|gallery)/\\w+");
-						var imagePattern = new RegExp("\\.(gif|jpg|png|jpeg)");
-
-						var endsWithFileExtension = imagePattern.test( url );
-						var imgurAlbum =  imgurAlbumPattern.test( url );
-
-						/*
-						console.debug( "url: {" + url + "} - albumImgur: {" + albumImgur +
-							"} - extension: {" + extension + "} - endsWithFileExtension: {" + endsWithFileExtension + "}" );
-						*/
-
-						var title = iData.title;
-
-						$("<h1>" + title + "</h1>").appendTo("#content");
-						$("<a href='"+commentLink+"' target='_blank'>Comments</a>").appendTo("#content");
-						appendBreak();
-
-						var imageUrl = endsWithFileExtension ? url : url + ".jpg";
-						if( endsWithFileExtension || ( url.indexOf( "imgur" ) != -1 && !imgurAlbum ) ) {
-							showImage(commentLink, title, url, imageUrl);
-						} else {
-							// drop a link to it just in case we can't wrap it in an iframe
-							$("<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>").appendTo("#content");
-
-							if((url.indexOf("youtube") != -1 || url.indexOf("youtu.be") != -1) && url.indexOf("charts") == -1){
-								showYouTubeContent(url);
-							}else if(imgurAlbum) {
-								showImgurAlbum(commentLink, title, url);
-							}else if(url.indexOf("qkme.me") != -1 || url.indexOf("quickmeme") != -1) {
-								showQuickMemeContent(url);
-							}else if(url.indexOf("reddit.com") != -1) {
-								$("<a href='javascript:void(0)' id='top10_showme"+itemNumber+"' onclick=showTopComments('top10_showme"+itemNumber+"','"+url+"',10)>Show Top 10 Comments</a><br/>").appendTo("#content");
-								$("<a href='javascript:void(0)' id='top25_showme"+itemNumber+"' onclick=showTopComments('top25_showme"+itemNumber+"','"+url+"',25)>Show Top 25 Comments</a><br/>").appendTo("#content");
-								$("<a href='javascript:void(0)' id='top100_showme"+itemNumber+"' onclick=showTopComments('top100_showme"+itemNumber+"','"+url+"',100)>Show Top 100 Comments</a><br/>").appendTo("#content");
-							}else {
-								$("<a href='javascript:void(0)' id='showme"+itemNumber+"' onclick=showIFrame('showme"+itemNumber+"','"+url+"')>Show iFrame</a><br/>").appendTo("#content");
-							}
-						}
-						appendBreak();
-						itemNumber++;
-			    });
+				$.when(
+					$.getJSON("http://www.reddit.com/r/all/top/.json?sort=top&t=day&jsonp=?"), 
+					$.getJSON("http://www.reddit.com/r/pics/top/.json?sort=top&t=day&jsonp=?"), 
+					$.getJSON("http://www.reddit.com/r/askreddit/top/.json?sort=top&t=day&jsonp=?"), 
+					$.getJSON("http://www.reddit.com/.json?jsonp=?"), 
+					$.getJSON("http://www.reddit.com/r/pics/.json?jsonp=?")).
+					done(function(url1, url2, url3, url4, url5) {
+				
+				    processJson(url1[0]);
+				    processJson(url2[0]);
+				    processJson(url3[0]);
+				    processJson(url4[0]);
+				    processJson(url5[0]);
+				    
+				    loadNonImageContent();
+				    loadAskRedditLinks();
+				    
+				    $(html).appendTo("#content");
 				});
 			}
 
-			function showImage(commentLink, title, url, imageUrl){
-				if( commentLink.indexOf( "nsfw" ) != -1 || title.indexOf( "NSFW" ) != -1 || commentLink.indexOf( "gonewild" ) != -1 ) {
-					$("<a href='javascript:void(0)' onclick=showHiddenImage(hiddenImg"+itemNumber+")>Show It!</a><br/>").appendTo("#content");
-					$("<a href='"+url+"' target='_blank' style='display:none' id=hiddenImg"+itemNumber+"><img id=redditImg"+itemNumber+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
-				} else {
-					$("<a href='"+url+"' target='_blank'><img id=redditImg"+itemNumber+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
-				}
+			function processJson(json) {
+			  $.each(json.data.children, function(i,item){
+			  	
+					loadLinkProperties(item);
+
+					if( seenUrls.indexOf( url ) != -1 || commentLink.indexOf( "atheism" ) != -1 ){
+						return;
+					}
+
+					seenUrls.push( url );
+					
+					if( url.indexOf( "AskReddit" ) != -1 ) {
+						askRedditUrls.push( item );
+						return;
+					}
+
+					var endsWithFileExtension = imagePattern.test( url );
+					var imgurAlbum =  imgurAlbumPattern.test( url );
+
+					if( endsWithFileExtension || (url.indexOf( "imgur" ) != -1 && !imgurAlbum) ) {
+						appendImage(commentLink, title, url, endsWithFileExtension ? url : url + ".jpg");
+					} else {
+						if(isYouTubeUrl(url)){
+							appendYouTubeContent(url);
+						}else if(imgurAlbum) {
+							appendImgurAlbum(commentLink, title, url);
+						}else if(isQuickMemeUrl(url)) {
+							appendQuickMemeContent(url);
+						}else {
+							nonImageContent.push(item);
+						}
+					}    
+		    });
+			}
+			
+			function isYouTubeUrl(url){
+				return (url.indexOf("youtube") != -1 || url.indexOf("youtu.be") != -1) && url.indexOf("charts") == -1;
+			}
+			
+			function isQuickMemeUrl(url){
+				return url.indexOf("qkme.me") != -1 || url.indexOf("quickmeme") != -1;
+			}
+			
+			function loadLinkProperties(item){
+				iData = item.data;
+				commentLink = "http://www.reddit.com" + iData.permalink;
+				url = iData.url;
+				title = iData.title;
+			}
+			
+			function appendTitleAndCommentLink(title, commentLink){
+					html += "<h1>" + title + "</h1>";
+					html += "<a href='"+commentLink+"' target='_blank'>Comments</a>";
+					appendBreak();
+			}
+			
+			function loadNonImageContent(){
+				console.debug(nonImageContent);
+				$.each(nonImageContent, function(i,item){
+					
+					loadLinkProperties(item);
+					appendTitleAndCommentLink(title, commentLink);
+					
+					html += "<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>";					
+					html += "<a href='javascript:void(0)' id='showme"+itemNumber+"' onclick=showIFrame('showme"+itemNumber+"','"+url+"')>Show iFrame</a><br/>";
+				
+					appendBreak();
+					itemNumber++;
+				});
+			}
+			
+			function loadAskRedditLinks(){
+				$.each(askRedditUrls, function(i,item){
+					
+					loadLinkProperties(item);
+					appendTitleAndCommentLink(title, commentLink);
+					
+					html += "<a href='javascript:void(0)' id='top10_showme"+itemNumber+"' onclick=showTopComments('top10_showme"+itemNumber+"','"+url+"',10)>Show Top 10 Comments</a><br/>";
+					html += "<a href='javascript:void(0)' id='top25_showme"+itemNumber+"' onclick=showTopComments('top25_showme"+itemNumber+"','"+url+"',25)>Show Top 25 Comments</a><br/>";
+					html += "<a href='javascript:void(0)' id='top100_showme"+itemNumber+"' onclick=showTopComments('top100_showme"+itemNumber+"','"+url+"',100)>Show Top 100 Comments</a><br/>";
+					
+					appendBreak();
+					itemNumber++;
+				});
 			}
 
-			function showImgurAlbum(commentLink, title, url){
-				if( commentLink.indexOf( "gonewild" ) != -1 ) {
-					$("<a href='javascript:void(0)' onclick='showHiddenImage(id=redditFrame"+itemNumber+")'>Show It!</a><br/>").appendTo("#content");
-					$("<iframe src='"+url+"' id=redditFrame"+itemNumber+" style='width: 75%; height: 75%; display:none; '/>").appendTo("#content");
+			function appendImage(commentLink, title, url, imageUrl){
+				appendTitleAndCommentLink(title, commentLink);
+				
+				if( commentLink.indexOf( "nsfw" ) != -1 || title.indexOf( "NSFW" ) != -1 || commentLink.indexOf( "gonewild" ) != -1 ) {
+					html += "<a href='javascript:void(0)' onclick=showHiddenImage(hiddenImg"+itemNumber+")>Show It!</a><br/>";
+					html += "<a href='"+url+"' target='_blank' style='display:none' id=hiddenImg"+itemNumber+"><img id=redditImg"+itemNumber+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>";
 				} else {
-					$("<iframe src='"+url+"' id=redditFrame"+itemNumber+" style='width: 75%; height: 75%;'/>").appendTo("#content");
+					html += "<a href='"+url+"' target='_blank'><img id=redditImg"+itemNumber+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>";
 				}
+				
+				appendBreak();
+				itemNumber++;
+			}
+
+			function appendImgurAlbum(commentLink, title, url){
+				appendTitleAndCommentLink(title, commentLink);
+				html += "<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>";											
+				
+				if( commentLink.indexOf( "gonewild" ) != -1 ) {
+					html += "<a href='javascript:void(0)' onclick='showHiddenImage(id=redditFrame"+itemNumber+")'>Show It!</a><br/>";
+					html += "<iframe src='"+url+"' id=redditFrame"+itemNumber+" style='width: 75%; height: 75%; display:none; '/>";
+				} else {
+					html += "<iframe src='"+url+"' id=redditFrame"+itemNumber+" style='width: 75%; height: 75%;'/>";
+				}
+				
+				appendBreak();
+				itemNumber++;				
 			}
 
 			function showTopComments(idAppendTo,url,limit){
@@ -121,7 +180,10 @@
   			});
 			}
 
-			function showYouTubeContent(url){
+			function appendYouTubeContent(url){
+				appendTitleAndCommentLink(title, commentLink);
+				html += "<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>";
+				
 				var parsedUrl = $.url( url );
 				var videoId = parsedUrl.param( 'v' );
 				if(videoId == undefined){
@@ -131,10 +193,17 @@
 					url = "http://www.youtube.com/embed/" + videoId;
 				}
 
-				$("<iframe class='youtube-player' src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#content");
+				html += "<iframe class='youtube-player' src='"+url+"' style='width: 75%; height: 75%;'/>";
+				
+				appendBreak();
+				itemNumber++;
 			}
 
-			function showQuickMemeContent(url){
+			function appendQuickMemeContent(url){
+				
+				appendTitleAndCommentLink(title, commentLink);
+				html += "<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>";											
+				
 				//example #1: http://www.quickmeme.com/meme/3rw7au/ : http://i.qkme.me/3rw7au.jpg
 				//example #2: http://qkme.me/3qyjn2 : http://i.qkme.me/3qyjn2.jpg
 				//example #3: http://qkme.me/3rwvvj?id=228282463 : http://i.qkme.me/3rwvvj.jpg
@@ -155,7 +224,10 @@
 
 				url = "http://i.qkme.me/" + imageLoc + ".jpg";
 				
-				$("<a href='"+url+"' target='_blank'><img id=redditImg"+itemNumber+" src='"+url+"' style='width: 75%; height: auto;' /></a>").appendTo("#content");
+				html += "<a href='"+url+"' target='_blank'><img id=redditImg"+itemNumber+" src='"+url+"' style='width: 75%; height: auto;' /></a>";
+				
+				appendBreak();
+				itemNumber++;				
 			}
 
 			function showIFrame(idAppendTo,url){
@@ -164,12 +236,11 @@
 			}
 
 			function showHiddenImage(idToShow){
-				//console.debug("showing: " + idToShow);
 				$(idToShow).css("display", "inline");
 			}
 
 			function appendBreak(){
-				$("<br/>").appendTo("#content");
+				html += "<br/>";
 			}
 		</script>
 	</head>
