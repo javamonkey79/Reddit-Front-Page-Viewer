@@ -128,7 +128,6 @@
 					
 					html += "<a href='javascript:void(0)' id='top10_showme"+itemNumber+"' onclick=showTopComments('top10_showme"+itemNumber+"','"+url+"',10)>Show Top 10 Comments</a><br/>";
 					html += "<a href='javascript:void(0)' id='top25_showme"+itemNumber+"' onclick=showTopComments('top25_showme"+itemNumber+"','"+url+"',25)>Show Top 25 Comments</a><br/>";
-					html += "<a href='javascript:void(0)' id='top100_showme"+itemNumber+"' onclick=showTopComments('top100_showme"+itemNumber+"','"+url+"',100)>Show Top 100 Comments</a><br/>";
 					
 					appendBreak();
 					itemNumber++;
@@ -139,7 +138,7 @@
 				appendTitleAndCommentLink(title, commentLink);
 				
 				if( commentLink.indexOf( "nsfw" ) != -1 || title.indexOf( "NSFW" ) != -1 || commentLink.indexOf( "gonewild" ) != -1 ) {
-					html += "<a href='javascript:void(0)' onclick=showHiddenImage(hiddenImg"+itemNumber+")>Show It!</a><br/>";
+					html += "<a href='javascript:void(0)' onclick=showHiddenContent(hiddenImg"+itemNumber+")>Show It!</a><br/>";
 					html += "<a href='"+url+"' target='_blank' style='display:none' id=hiddenImg"+itemNumber+"><img id=redditImg"+itemNumber+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>";
 				} else {
 					html += "<a href='"+url+"' target='_blank'><img id=redditImg"+itemNumber+" src='"+imageUrl+"' style='width: 75%; height: auto;' /></a>";
@@ -154,7 +153,7 @@
 				html += "<a href='"+url+"' target='_blank'>Open In New Tab</a><br/>";											
 				
 				if( commentLink.indexOf( "gonewild" ) != -1 ) {
-					html += "<a href='javascript:void(0)' onclick='showHiddenImage(id=redditFrame"+itemNumber+")'>Show It!</a><br/>";
+					html += "<a href='javascript:void(0)' onclick='showHiddenContent(id=redditFrame"+itemNumber+")'>Show It!</a><br/>";
 					html += "<iframe src='"+url+"' id=redditFrame"+itemNumber+" style='width: 75%; height: 75%; display:none; '/>";
 				} else {
 					html += "<iframe src='"+url+"' id=redditFrame"+itemNumber+" style='width: 75%; height: 75%;'/>";
@@ -164,6 +163,7 @@
 				itemNumber++;				
 			}
 
+			var commentNumber = 0;
 			function showTopComments(idAppendTo,url,limit){
 				$("<br/>").appendTo("#"+idAppendTo);
 				$.getJSON(url+".json?depth=1&sort=top&limit="+limit+"&jsonp=?", function(innerJson) {
@@ -172,7 +172,22 @@
   				
   				$.each(innerJson[1].data.children, function(j,innerItem){
   					if(innerItem.data.body != undefined){
-  						newContent += "<div style=\"width: 50%; padding-left:50px;\">"+$("<div/>").html(innerItem.data.body_html).text()+"</div><hr width=50% align=left />";
+  						var commentHtml = innerItem.data.body_html;
+  						// href="/
+  						
+  						var subdomainLinkRegex = /href=\"\/(.*)\"/g;
+							commentHtml = commentHtml.replace(subdomainLinkRegex, "href=\"http://www.reddit.com/$1\"")
+  						
+  						
+  						var commentLength = commentHtml.length;
+  						if( commentLength < 2000 ) {
+  							newContent += "<div style=\"width: 50%; padding-left:50px;\">"+$("<div/>").html(commentHtml).text()+"</div><hr width=50% align=left />";
+  						} else {
+								newContent += "<a style=\"padding-left:50px;\" href='javascript:void(0)' onclick=showHiddenContent(comment"+commentNumber+")>Show clipped chars: "+commentLength+"</a><br/>";
+								newContent += "<div style=\"display:none; width: 50%; padding-left:50px;\" id=comment"+commentNumber+">"+$("<div/>").html(commentHtml).text()+"</div><hr width=50% align=left />";
+   						}
+   						
+   						commentNumber++;
   					}
   				});
   				
@@ -235,8 +250,8 @@
 				$("<iframe src='"+url+"' style='width: 75%; height: 75%;'/>").appendTo("#"+idAppendTo);
 			}
 
-			function showHiddenImage(idToShow){
-				$(idToShow).css("display", "inline");
+			function showHiddenContent(idToShow){
+				$(idToShow).css("display", "block");
 			}
 
 			function appendBreak(){
