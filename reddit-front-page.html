@@ -173,7 +173,6 @@
   				$.each(innerJson[1].data.children, function(j,innerItem){
   					if(innerItem.data.body != undefined){
   						var commentHtml = innerItem.data.body_html;
-  						// href="/
   						
   						var subdomainLinkRegex = /href=\"\/(.*)\"/g;
 							commentHtml = commentHtml.replace(subdomainLinkRegex, "href=\"http://www.reddit.com/$1\"")
